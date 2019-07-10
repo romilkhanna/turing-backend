@@ -1,0 +1,32 @@
+additionalTCPPorts: [3306, 8000]
+service:
+  annotations:
+    getambassador.io/config: |
+      ---
+      apiVersion: ambassador/v1
+      kind: Module
+      name: ambassador
+      config:
+        service_port: 8080
+      ---
+      apiVersion: ambassador/v1
+      kind: TCPMapping
+      name: mysql_mapping
+      port: 3306
+      service: mysql:3306
+      ---
+      apiVersion: ambassador/v1
+      kind: Mapping
+      name: k-dash_mapping
+      prefix: /dash
+      service: kubernetes-dashboard.kube-system:8000
+      ---
+      apiVersion: ambassador/v1
+      kind: Mapping
+      name: turing-backend_mapping
+      prefix: /turing/api/
+      service: turing-backend:5000
+      labels:
+        ambassador:
+          - request_label:
+            - turing-backend
