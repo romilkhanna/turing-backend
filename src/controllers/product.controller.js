@@ -17,15 +17,7 @@
  *  NB: Check the BACKEND CHALLENGE TEMPLATE DOCUMENTATION in the readme of this repository to see our recommended
  *  endpoints, request body/param, and response object for each of these method
  */
-import log from 'fancy-log';
-import {
-  Product,
-  Department,
-  AttributeValue,
-  Attribute,
-  Category,
-  Sequelize,
-} from '../database/models';
+import { Product, Department, Category, Sequelize, sequelize } from '../database/models';
 
 const { Op } = Sequelize;
 
@@ -44,20 +36,35 @@ class ProductController {
    * @param {object} next next middleware
    * @returns {json} json object with status and product data
    * @memberof ProductController
+   *
+   * Tests:
+   *  http://localhost:5000/products -> 200 OK
+   *  http://localhost:5000/products?description_length=1 -> 200 OK
    */
   static async getAllProducts(req, res, next) {
-    const { page, limit, offset } = req.query;
-    const sqlQueryMap = {
-      limit,
-      offset,
-    };
-    const err = new Error('Product list does not exist');
-    err.status = 400;
+    let { page, limit, description_length } = req.query; // eslint-disable-line
+    page = parseInt(page, 10);
+    limit = parseInt(limit, 10);
+    description_length = parseInt(description_length, 10); // eslint-disable-line
+
     try {
-      const products = await Product.findAndCountAll(sqlQueryMap);
-      return products ? res.json(products) : next(err);
+      res.locals.data = await Product.findAndCountAll({
+        offset: page && page > 0 ? page - 1 : 0,
+        limit: limit && limit > 0 ? limit : 20,
+      });
+
+      res.locals.data.rows.forEach(row => {
+        return row.setDataValue(
+          'description',
+          row
+            .getDataValue('description')
+            .substring(0, description_length && description_length > 0 ? description_length : 200) // eslint-disable-line
+        );
+      });
+
+      next();
     } catch (error) {
-      return next(error);
+      next(error);
     }
   }
 
@@ -70,14 +77,22 @@ class ProductController {
    * @param {object} next next middleware
    * @returns {json} json object with status and product data
    * @memberof ProductController
+   *
+   * Tests:
+   *  http://localhost:5000/products/search?query_string=Mercury -> 200 OK
+   *  http://localhost:5000/products/search?query_string=Mercury&description_length=1 -> 200 OK
+   *  http://localhost:5000/products/search?query_string=cucumber -> 200 OK
    */
   static async searchProduct(req, res, next) {
-    const { query_string, all_words = true || all_words, page, limit, length } = req.query;  // eslint-disable-line
-    let err = new Error(`Product for query '${query_string}', does not exist`) // eslint-disable-line
-    err.status = 400;
+    let { query_string, all_words = all_words || true, page, limit, description_length } = req.query;  // eslint-disable-line
+    page = parseInt(page, 10);
+    limit = parseInt(limit, 10);
+    description_length = parseInt(description_length, 10); // eslint-disable-line
+
     try {
-      const product = await Product.findAndCountAll({
-        limit,
+      res.locals.data = await Product.findAndCountAll({
+        offset: page && page > 0 ? page - 1 : 0,
+        limit: limit && limit > 0 ? limit : 20,
         where: {
           [Op.or]: [
             {
@@ -93,9 +108,19 @@ class ProductController {
           ],
         },
       });
-      return product ? res.json(product) : next(err);
+
+      res.locals.data.rows.forEach(row => {
+        return row.setDataValue(
+          'description',
+          row
+            .getDataValue('description')
+            .substring(0, description_length && description_length > 0 ? description_length : 200) // eslint-disable-line
+        );
+      });
+
+      next();
     } catch (error) {
-      return next(error);
+      next(error);
     }
   }
 
@@ -108,14 +133,19 @@ class ProductController {
    * @param {object} next next middleware
    * @returns {json} json object with status and product data
    * @memberof ProductController
+   *
+   * Tests:
+   *  http://localhost:5000/products/inCategory/1 -> 200 OK
    */
   static async getProductsByCategory(req, res, next) {
-    const { category_id } = req.params; // eslint-disable-line
-    const { page, limit, offset } = req.query;
-    const err = new Error(`Products for category id ${category_id} does not exist`); // eslint-disable-line
-    err.status = 400;
+    const { category_id } = req.params;
+    let { page, limit, description_length } = req.query; // eslint-disable-line
+    page = parseInt(page, 10);
+    limit = parseInt(limit, 10);
+    description_length = parseInt(description_length, 10); // eslint-disable-line
+
     try {
-      const products = await Product.findAndCountAll({
+      res.locals.data = await Product.findAndCountAll({
         attributes: ['product_id', 'name', 'description', 'price', 'discounted_price', 'thumbnail'],
         include: [
           {
@@ -126,12 +156,22 @@ class ProductController {
             attributes: [],
           },
         ],
-        limit,
-        offset,
+        offset: page && page > 0 ? page - 1 : 0,
+        limit: limit && limit > 0 ? limit : 20,
       });
-      return products ? res.json(products) : next(err);
+
+      res.locals.data.rows.forEach(row => {
+        return row.setDataValue(
+          'description',
+          row
+            .getDataValue('description')
+            .substring(0, description_length && description_length > 0 ? description_length : 200) // eslint-disable-line
+        );
+      });
+
+      next();
     } catch (error) {
-      return next(error);
+      next(error);
     }
   }
 
@@ -144,9 +184,46 @@ class ProductController {
    * @param {object} next next middleware
    * @returns {json} json object with status and product data
    * @memberof ProductController
+   *
+   * Tests:
+   *  http://localhost:5000/products/inDepartment/1 -> 200 OK
+   *  http://localhost:5000/products/inDepartment/a -> 404 Not Found
    */
   static async getProductsByDepartment(req, res, next) {
-    // implement the method to get products by department
+    const { department_id } = req.params; // eslint-disable-line
+    let { page, limit, description_length } = req.query; // eslint-disable-line
+    page = parseInt(page, 10);
+    limit = parseInt(limit, 10);
+    description_length = parseInt(description_length, 10); // eslint-disable-line
+
+    try {
+      res.locals.data = await Category.findAndCountAll({
+        where: {
+          department_id,
+        },
+        include: [
+          {
+            model: Product,
+            required: true,
+          },
+        ],
+        offset: page && page > 0 ? page - 1 : 0,
+        limit: limit && limit > 0 ? limit : 20,
+      });
+
+      res.locals.data.rows.forEach(row => {
+        return row.setDataValue(
+          'description',
+          row
+            .getDataValue('description')
+            .substring(0, description_length && description_length > 0 ? description_length : 200) // eslint-disable-line
+        );
+      });
+
+      next();
+    } catch (error) {
+      next(error);
+    }
   }
 
   /**
@@ -158,31 +235,21 @@ class ProductController {
    * @param {object} next next middleware
    * @returns {json} json object with status and product details
    * @memberof ProductController
+   *
+   * Tests:
+   *  http://localhost:5000/products/1 -> 200 OK
+   *  http://localhost:5000/products/a -> 404 Not Found
    */
   static async getProduct(req, res, next) {
     const { product_id } = req.params; // eslint-disable-line
+
     try {
-      const product = await Product.findByPk(product_id, {
-        include: [
-          {
-            model: AttributeValue,
-            as: 'attributes',
-            attributes: ['value'],
-            through: {
-              attributes: [],
-            },
-            include: [
-              {
-                model: Attribute,
-                as: 'attribute_type',
-              },
-            ],
-          },
-        ],
-      });
-      return res.json(product);
+      // TODO: For some reason findByPk doesn't work
+      res.locals.data = await Product.findAll({ where: { product_id } });
+
+      next();
     } catch (error) {
-      return next(error);
+      next(error);
     }
   }
 
@@ -195,16 +262,16 @@ class ProductController {
    * @param {object} next next middleware
    * @returns {json} json object with status and department list
    * @memberof ProductController
+   *
+   * Tests:
+   *  http://localhost:5000/departments -> 200 OK
    */
   static async getAllDepartments(req, res, next) {
-    let error = new Error('Could not get list of departments');
-    error.status = 400;
     try {
-      const departments = await Department.findAll();
-      return departments ? res.json(departments) : next(error);
-    } catch (err) {
-      error = err;
-      return next(error);
+      res.locals.data = await Department.findAll();
+      next();
+    } catch (error) {
+      next(error);
     }
   }
 
@@ -213,17 +280,20 @@ class ProductController {
    * @param {*} req
    * @param {*} res
    * @param {*} next
+   *
+   * Tests:
+   *  http://localhost:5000/departments/1 -> 200 OK
+   *  http://localhost:5000/departments/a -> 404 Not Found
    */
   static async getDepartment(req, res, next) {
     const { department_id } = req.params; // eslint-disable-line
-    let error = new Error(`Department with id ${department_id} does not exist`); // eslint-disable-line
-    error.status = 400;
+
     try {
-      const department = await Department.findByPk(department_id);
-      return department ? res.json(department) : next(error);
-    } catch (err) {
-      error = err;
-      return next(error);
+      // TODO: For some reason findByPk doesn't work
+      res.locals.data = await Department.findAll({ where: { department_id } });
+      next();
+    } catch (error) {
+      next(error);
     }
   }
 
@@ -232,16 +302,26 @@ class ProductController {
    * @param {*} req
    * @param {*} res
    * @param {*} next
+   *
+   * Tests:
+   *  http://localhost:5000/categories -> 200 OK
    */
   static async getAllCategories(req, res, next) {
-    let error = new Error('Could not get list of categories');
-    error.status = 400;
+    let { order, page, limit } = req.query;
+    order = sequelize.col(order || 'category_id');
+    page = parseInt(page, 10);
+    limit = parseInt(limit, 10);
+
     try {
-      const categories = await Category.findAll();
-      return categories ? res.json(categories) : next(error);
-    } catch (err) {
-      error = err;
-      return next(error);
+      res.locals.data = await Category.findAndCountAll({
+        offset: page && page > 0 ? page - 1 : 0,
+        limit: limit && limit > 0 ? limit : 20,
+        order,
+      });
+
+      next();
+    } catch (error) {
+      next(error);
     }
   }
 
@@ -250,17 +330,20 @@ class ProductController {
    * @param {*} req
    * @param {*} res
    * @param {*} next
+   *
+   * Tests:
+   *  http://localhost:5000/categories/1 -> 200 OK
+   *  http://localhost:5000/categories/a -> 404 Not Found
    */
   static async getSingleCategory(req, res, next) {
     const { category_id } = req.params;  // eslint-disable-line
-    let error = new Error(`Category with id ${category_id} does not exist`); // eslint-disable-line
-    error.status = 400;
+
     try {
-      const category = await Category.findByPk(category_id);
-      return category ? res.json(category) : next(error);
-    } catch (err) {
-      error = err;
-      return next(error);
+      // TODO: For some reason findByPk doesn't work
+      res.locals.data = await Category.findAll({ where: { category_id } });
+      next();
+    } catch (error) {
+      next(error);
     }
   }
 
@@ -269,21 +352,52 @@ class ProductController {
    * @param {*} req
    * @param {*} res
    * @param {*} next
+   *
+   * Tests:
+   *  http://localhost:5000/categories/inDepartment/1 -> 200 OK
+   *  http://localhost:5000/categories/inDepartment/a -> 404 Not Found
    */
   static async getDepartmentCategories(req, res, next) {
     const { department_id } = req.params;  // eslint-disable-line
-    let error = new Error(`Categories for id ${department_id} does not exist`); // eslint-disable-line
-    error.status = 400;
+
     try {
-      const categories = await Category.findAll({
-        where: {
-          department_id,
-        },
+      res.locals.data = await Category.findAll({ where: { department_id } });
+      next();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * This method should get list of categories in a product
+   * @param {*} req
+   * @param {*} res
+   * @param {*} next
+   *
+   * Tests:
+   *  http://localhost:5000/categories/inProduct/1 -> 200 OK
+   *  http://localhost:5000/categories/inProduct/a -> 404 Not Found
+   */
+  static async getProductCategories(req, res, next) {
+    const { product_id } = req.params;  // eslint-disable-line
+
+    try {
+      const result = await Product.findByPk(product_id, {
+        attributes: [],
+        include: [
+          {
+            model: Category,
+            through: { attributes: [] },
+            required: true,
+            attributes: ['category_id', 'department_id', 'name'],
+          },
+        ],
       });
-      return categories ? res.json(categories) : next(error);
-    } catch (err) {
-      error = err;
-      return next(error);
+
+      res.locals.data = result ? result.Categories : result;
+      next();
+    } catch (error) {
+      next(error);
     }
   }
 }
