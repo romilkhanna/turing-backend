@@ -10,7 +10,7 @@
  * NB: Check the BACKEND CHALLENGE TEMPLATE DOCUMENTATION in the readme of this repository to see our recommended
  *  endpoints, request body/param, and response object for each of these method
  */
-import { Attribute, AttributeValue, ProductAttribute } from '../database/models';
+import { Attribute, AttributeValue, Product, Sequelize } from '../database/models';
 
 class AttributeController {
   /**
@@ -18,16 +18,16 @@ class AttributeController {
    * @param {*} req
    * @param {*} res
    * @param {*} next
+   *
+   * Tests:
+   *  http://localhost:5000/attributes -> 200 OK
    */
   static async getAllAttributes(req, res, next) {
     try {
-      const attributes = await Attribute.findAll();
-      return res.status(200).json({
-        status: true,
-        data: attributes,
-      });
+      res.locals.data = await Attribute.findAll();
+      next();
     } catch (error) {
-      return next(error);
+      next(error);
     }
   }
 
@@ -36,17 +36,18 @@ class AttributeController {
    * @param {*} req
    * @param {*} res
    * @param {*} next
+   *
+   * Tests:
+   *  http://localhost:5000/attributes/1 -> 200 OK
+   *  http://localhost:5000/attributes/a -> 404 Not Found
    */
   static async getSingleAttribute(req, res, next) {
-    const { attribute_id } = req.params;
+    const { attribute_id } = req.params; // eslint-disable-line
     try {
-      const attribute = await Attribute.findByPk(attribute_id);
-      return res.status(200).json({
-        status: true,
-        data: attribute,
-      });
+      res.locals.data = await Attribute.findByPk(attribute_id);
+      next();
     } catch (error) {
-      return next(error);
+      next(error);
     }
   }
 
@@ -55,20 +56,26 @@ class AttributeController {
    * @param {*} req
    * @param {*} res
    * @param {*} next
+   *
+   * Tests:
+   *  http://localhost:5000/attributes/values/1 -> 200 OK
+   *  http://localhost:5000/attributes/values/a -> 404 Not Found
    */
   static async getAttributeValues(req, res, next) {
+    const { attribute_id } = req.params; // eslint-disable-line
     try {
-      const attributeValues = await AttributeValue.findAll({
-        where: {
-          attribute_id: req.params.attribute_id,
-        },
+      const result = await Attribute.findByPk(attribute_id, {
+        include: [
+          {
+            model: AttributeValue,
+            required: true,
+          },
+        ],
       });
-      return res.status(200).json({
-        status: true,
-        data: attributeValues,
-      });
+      res.locals.data = result ? result.AttributeValues : result;
+      next();
     } catch (error) {
-      return next();
+      next(error);
     }
   }
 
@@ -77,20 +84,38 @@ class AttributeController {
    * @param {*} req
    * @param {*} res
    * @param {*} next
+   *
+   * Tests:
+   *  http://localhost:5000/attributes/inProduct/1 -> 200 OK
+   *  http://localhost:5000/attributes/inProduct/a -> 404 Not Found
    */
   static async getProductAttributes(req, res, next) {
+    const { product_id } = req.params; // eslint-disable-line
     try {
-      const attributes = await ProductAttribute.findAll({
-        where: {
-          product_id: req.params.product_id,
-        },
+      res.locals.data = await AttributeValue.findAll({
+        attributes: [
+          'attribute_value_id',
+          ['value', 'attribute_value'],
+          [Sequelize.literal('attribute_type.name'), 'attribute_name'],
+        ],
+        include: [
+          {
+            model: Product,
+            through: { where: { product_id } },
+            required: true,
+            attributes: [],
+          },
+          {
+            model: Attribute,
+            as: 'attribute_type',
+            required: true,
+            attributes: [],
+          },
+        ],
       });
-      return res.status(200).json({
-        status: true,
-        data: attributes,
-      });
+      next();
     } catch (error) {
-      return next(error);
+      next(error);
     }
   }
 }
