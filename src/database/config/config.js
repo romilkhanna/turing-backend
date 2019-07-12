@@ -9,7 +9,7 @@ module.exports = {
     dialect: 'mysql',
     logging: false,
   },
-  staging: {
+  test: {
     username: process.env.TEST_DB_USER,
     password: process.env.TEST_DB_PASS,
     database: process.env.TEST_DB_NAME,
