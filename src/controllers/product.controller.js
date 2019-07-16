@@ -38,29 +38,29 @@ class ProductController {
    * @memberof ProductController
    *
    * Tests:
-   *  http://localhost:5000/products -> 200 OK
-   *  http://localhost:5000/products?description_length=1 -> 200 OK
+   *  http://localhost/turing/api/products -> 200
+   *  http://localhost/turing/api/products?page=1 -> 200
+   *  http://localhost/turing/api/products?limit=1 -> 200
+   *  http://localhost/turing/api/products?description_length=1 -> 200
+   *  http://localhost/turing/api/products?page=1&limit=1&description_length=1 -> 200
    */
   static async getAllProducts(req, res, next) {
     let { page, limit, description_length } = req.query; // eslint-disable-line
-    page = parseInt(page, 10);
-    limit = parseInt(limit, 10);
-    description_length = parseInt(description_length, 10); // eslint-disable-line
 
     try {
-      res.locals.data = await Product.findAndCountAll({
-        offset: page && page > 0 ? page - 1 : 0,
-        limit: limit && limit > 0 ? limit : 20,
+      const products = await Product.findAndCountAll({
+        offset: (page ? page - 1 : 0) * (limit || 20),
+        limit: limit || 20,
       });
 
-      res.locals.data.rows.forEach(row => {
+      products.rows.forEach(row => {
         return row.setDataValue(
           'description',
-          row
-            .getDataValue('description')
-            .substring(0, description_length && description_length > 0 ? description_length : 200) // eslint-disable-line
+          row.getDataValue('description').substring(0, description_length || 200) // eslint-disable-line
         );
       });
+
+      res.locals = { status: products !== (null && undefined), result: products };
 
       next();
     } catch (error) {
@@ -79,20 +79,17 @@ class ProductController {
    * @memberof ProductController
    *
    * Tests:
-   *  http://localhost:5000/products/search?query_string=Mercury -> 200 OK
-   *  http://localhost:5000/products/search?query_string=Mercury&description_length=1 -> 200 OK
-   *  http://localhost:5000/products/search?query_string=cucumber -> 200 OK
+   *  http://localhost/turing/api/products/search?query_string=Mercury -> 200 OK
+   *  http://localhost/turing/api/products/search?query_string=Mercury&description_length=1 -> 200 OK
+   *  http://localhost/turing/api/products/search?query_string=cucumber -> 200 OK
    */
   static async searchProduct(req, res, next) {
     let { query_string, all_words = all_words || true, page, limit, description_length } = req.query;  // eslint-disable-line
-    page = parseInt(page, 10);
-    limit = parseInt(limit, 10);
-    description_length = parseInt(description_length, 10); // eslint-disable-line
 
     try {
-      res.locals.data = await Product.findAndCountAll({
-        offset: page && page > 0 ? page - 1 : 0,
-        limit: limit && limit > 0 ? limit : 20,
+      const products = await Product.findAndCountAll({
+        offset: (page ? page - 1 : 0) * (limit || 20),
+        limit: limit || 20,
         where: {
           [Op.or]: [
             {
@@ -109,14 +106,14 @@ class ProductController {
         },
       });
 
-      res.locals.data.rows.forEach(row => {
+      products.rows.forEach(row => {
         return row.setDataValue(
           'description',
-          row
-            .getDataValue('description')
-            .substring(0, description_length && description_length > 0 ? description_length : 200) // eslint-disable-line
+          row.getDataValue('description').substring(0, description_length || 200) // eslint-disable-line
         );
       });
+
+      res.locals = { status: products !== (null && undefined), result: products };
 
       next();
     } catch (error) {
@@ -135,17 +132,14 @@ class ProductController {
    * @memberof ProductController
    *
    * Tests:
-   *  http://localhost:5000/products/inCategory/1 -> 200 OK
+   *  http://localhost/turing/api/products/inCategory/1 -> 200 OK
    */
   static async getProductsByCategory(req, res, next) {
-    const { category_id } = req.params;
+    const { category_id } = req.params; // eslint-disable-line
     let { page, limit, description_length } = req.query; // eslint-disable-line
-    page = parseInt(page, 10);
-    limit = parseInt(limit, 10);
-    description_length = parseInt(description_length, 10); // eslint-disable-line
 
     try {
-      res.locals.data = await Product.findAndCountAll({
+      const products = await Product.findAndCountAll({
         attributes: ['product_id', 'name', 'description', 'price', 'discounted_price', 'thumbnail'],
         include: [
           {
@@ -156,18 +150,18 @@ class ProductController {
             attributes: [],
           },
         ],
-        offset: page && page > 0 ? page - 1 : 0,
-        limit: limit && limit > 0 ? limit : 20,
+        offset: (page ? page - 1 : 0) * (limit || 20),
+        limit: limit || 20,
       });
 
-      res.locals.data.rows.forEach(row => {
+      products.rows.forEach(row => {
         return row.setDataValue(
           'description',
-          row
-            .getDataValue('description')
-            .substring(0, description_length && description_length > 0 ? description_length : 200) // eslint-disable-line
+          row.getDataValue('description').substring(0, description_length || 200) // eslint-disable-line
         );
       });
+
+      res.locals = { status: products !== (null && undefined), result: products };
 
       next();
     } catch (error) {
@@ -186,18 +180,15 @@ class ProductController {
    * @memberof ProductController
    *
    * Tests:
-   *  http://localhost:5000/products/inDepartment/1 -> 200 OK
-   *  http://localhost:5000/products/inDepartment/a -> 404 Not Found
+   *  http://localhost/turing/api/products/inDepartment/1 -> 200 OK
+   *  http://localhost/turing/api/products/inDepartment/a -> 404 Not Found
    */
   static async getProductsByDepartment(req, res, next) {
     const { department_id } = req.params; // eslint-disable-line
     let { page, limit, description_length } = req.query; // eslint-disable-line
-    page = parseInt(page, 10);
-    limit = parseInt(limit, 10);
-    description_length = parseInt(description_length, 10); // eslint-disable-line
 
     try {
-      res.locals.data = await Category.findAndCountAll({
+      const products = await Category.findAndCountAll({
         where: {
           department_id,
         },
@@ -207,18 +198,18 @@ class ProductController {
             required: true,
           },
         ],
-        offset: page && page > 0 ? page - 1 : 0,
-        limit: limit && limit > 0 ? limit : 20,
+        offset: (page ? page - 1 : 0) * (limit || 20),
+        limit: limit || 20,
       });
 
-      res.locals.data.rows.forEach(row => {
+      products.rows.forEach(row => {
         return row.setDataValue(
           'description',
-          row
-            .getDataValue('description')
-            .substring(0, description_length && description_length > 0 ? description_length : 200) // eslint-disable-line
+          row.getDataValue('description').substring(0, description_length || 200) // eslint-disable-line
         );
       });
+
+      res.locals = { status: products !== (null && undefined), result: products };
 
       next();
     } catch (error) {
@@ -237,16 +228,16 @@ class ProductController {
    * @memberof ProductController
    *
    * Tests:
-   *  http://localhost:5000/products/1 -> 200 OK
-   *  http://localhost:5000/products/a -> 404 Not Found
+   *  http://localhost/turing/api/products/1 -> 200 OK
+   *  http://localhost/turing/api/products/a -> 404 Not Found
    */
   static async getProduct(req, res, next) {
     const { product_id } = req.params; // eslint-disable-line
 
     try {
       // TODO: For some reason findByPk doesn't work
-      res.locals.data = await Product.findAll({ where: { product_id } });
-
+      const product = await Product.findOne({ where: { product_id } });
+      res.locals = { status: product !== (null && undefined), result: product };
       next();
     } catch (error) {
       next(error);
@@ -264,11 +255,12 @@ class ProductController {
    * @memberof ProductController
    *
    * Tests:
-   *  http://localhost:5000/departments -> 200 OK
+   *  http://localhost/turing/api/departments -> 200 OK
    */
   static async getAllDepartments(req, res, next) {
     try {
-      res.locals.data = await Department.findAll();
+      const departments = await Department.findAll();
+      res.locals = { status: departments !== (null && undefined), result: departments };
       next();
     } catch (error) {
       next(error);
@@ -282,15 +274,16 @@ class ProductController {
    * @param {*} next
    *
    * Tests:
-   *  http://localhost:5000/departments/1 -> 200 OK
-   *  http://localhost:5000/departments/a -> 404 Not Found
+   *  http://localhost/turing/api/departments/1 -> 200 OK
+   *  http://localhost/turing/api/departments/a -> 404 Not Found
    */
   static async getDepartment(req, res, next) {
     const { department_id } = req.params; // eslint-disable-line
 
     try {
       // TODO: For some reason findByPk doesn't work
-      res.locals.data = await Department.findAll({ where: { department_id } });
+      const department = await Department.findOne({ where: { department_id } });
+      res.locals = { status: department !== (null && undefined), result: department };
       next();
     } catch (error) {
       next(error);
@@ -304,21 +297,19 @@ class ProductController {
    * @param {*} next
    *
    * Tests:
-   *  http://localhost:5000/categories -> 200 OK
+   *  http://localhost/turing/api/categories -> 200 OK
    */
   static async getAllCategories(req, res, next) {
-    let { order, page, limit } = req.query;
-    order = sequelize.col(order || 'category_id');
-    page = parseInt(page, 10);
-    limit = parseInt(limit, 10);
+    const { order, page, limit } = req.query;
 
     try {
-      res.locals.data = await Category.findAndCountAll({
-        offset: page && page > 0 ? page - 1 : 0,
-        limit: limit && limit > 0 ? limit : 20,
-        order,
+      const categories = await Category.findAndCountAll({
+        offset: (page ? page - 1 : 0) * (limit || 20),
+        limit: limit || 20,
+        order: sequelize.col(order || 'category_id'),
       });
 
+      res.locals = { status: categories !== (null && undefined), result: categories };
       next();
     } catch (error) {
       next(error);
@@ -332,15 +323,16 @@ class ProductController {
    * @param {*} next
    *
    * Tests:
-   *  http://localhost:5000/categories/1 -> 200 OK
-   *  http://localhost:5000/categories/a -> 404 Not Found
+   *  http://localhost/turing/api/categories/1 -> 200 OK
+   *  http://localhost/turing/api/categories/a -> 404 Not Found
    */
   static async getSingleCategory(req, res, next) {
     const { category_id } = req.params;  // eslint-disable-line
 
     try {
       // TODO: For some reason findByPk doesn't work
-      res.locals.data = await Category.findAll({ where: { category_id } });
+      const category = await Category.findOne({ where: { category_id } });
+      res.locals = { status: category !== (null && undefined), result: category };
       next();
     } catch (error) {
       next(error);
@@ -354,14 +346,15 @@ class ProductController {
    * @param {*} next
    *
    * Tests:
-   *  http://localhost:5000/categories/inDepartment/1 -> 200 OK
-   *  http://localhost:5000/categories/inDepartment/a -> 404 Not Found
+   *  http://localhost/turing/api/categories/inDepartment/1 -> 200 OK
+   *  http://localhost/turing/api/categories/inDepartment/a -> 404 Not Found
    */
   static async getDepartmentCategories(req, res, next) {
     const { department_id } = req.params;  // eslint-disable-line
 
     try {
-      res.locals.data = await Category.findAll({ where: { department_id } });
+      const categories = await Category.findAll({ where: { department_id } });
+      res.locals = { status: categories !== (null && undefined), result: categories };
       next();
     } catch (error) {
       next(error);
@@ -375,14 +368,14 @@ class ProductController {
    * @param {*} next
    *
    * Tests:
-   *  http://localhost:5000/categories/inProduct/1 -> 200 OK
-   *  http://localhost:5000/categories/inProduct/a -> 404 Not Found
+   *  http://localhost/turing/api/categories/inProduct/1 -> 200 OK
+   *  http://localhost/turing/api/categories/inProduct/a -> 404 Not Found
    */
   static async getProductCategories(req, res, next) {
     const { product_id } = req.params;  // eslint-disable-line
 
     try {
-      const result = await Product.findByPk(product_id, {
+      const productCategories = await Product.findByPk(product_id, {
         attributes: [],
         include: [
           {
@@ -394,7 +387,7 @@ class ProductController {
         ],
       });
 
-      res.locals.data = result ? result.Categories : result;
+      res.locals = { status: productCategories !== (null && undefined), result: productCategories };
       next();
     } catch (error) {
       next(error);
