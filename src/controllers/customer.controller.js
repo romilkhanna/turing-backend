@@ -12,9 +12,7 @@
  *  NB: Check the BACKEND CHALLENGE TEMPLATE DOCUMENTATION in the readme of this repository to see our recommended
  *  endpoints, request body/param, and response object for each of these method
  */
-import log from 'fancy-log';
-import jwt from 'jsonwebtoken';
-import { Customer, sequelize } from '../database/models';
+import { Customer } from '../database/models';
 
 /**
  *
@@ -33,7 +31,7 @@ class CustomerController {
    * @memberof CustomerController
    *
    * Tests:
-POST http://localhost:5000/customers
+POST http://localhost/turing/api/customers
 content-type: application/x-www-form-urlencoded
 
 name=romil&password=test&email=romilkhanna@outlook.com
@@ -42,24 +40,22 @@ name=romil&password=test&email=romilkhanna@outlook.com
     const { name, email, password } = req.body;
 
     try {
-      const customer = await Customer.create({
-        name,
-        email,
-        password,
+      const [customer, isCreated] = await Customer.findCreateFind({
+        where: { email },
+        defaults: { name, email, password },
       });
 
-      const token = jwt.sign({ data: customer.customer_id }, process.env.JWT_KEY, {
-        expiresIn: process.env.DEFAULT_TOKEN_EXPIRY_TIME,
+      if (!isCreated) {
+        throw new Error('Customer already exists');
+      }
+
+      Object.keys(Customer.prototype.rawAttributes).forEach(attr => {
+        customer.dataValues[attr] = customer.dataValues[attr] || null;
       });
 
-      Object.keys(Customer.prototype.rawAttributes).forEach(column => {
-        customer.set(column, customer.get(column) || null);
-      });
-
-      res.locals.data = {
-        customer: customer.getSafeDataValues(),
-        accessToken: `Bearer ${token}`,
-        expires_in: process.env.DEFAULT_TOKEN_EXPIRY_TIME,
+      res.locals = {
+        customer_id: customer.dataValues.customer_id,
+        result: { customer: customer.getSafeDataValues() },
       };
 
       next();
@@ -79,7 +75,7 @@ name=romil&password=test&email=romilkhanna@outlook.com
    * @memberof CustomerController
    *
    * Tests:
-POST http://localhost:5000/customers/login
+POST http://localhost/turing/api/customers/login
 content-type: application/x-www-form-urlencoded
 
 password=test&email=romilkhanna@outlook.com
@@ -89,22 +85,20 @@ password=test&email=romilkhanna@outlook.com
 
     try {
       const customer = await Customer.findOne({ where: { email } });
+
+      if (!customer) throw new Error('Invalid email or password');
+
       const isValid = await customer.validatePassword(password);
 
-      if (!isValid) throw new Error('Invalid password');
-
-      const token = jwt.sign({ data: customer.customer_id }, process.env.JWT_KEY, {
-        expiresIn: process.env.DEFAULT_TOKEN_EXPIRY_TIME,
-      });
+      if (!isValid) throw new Error('Invalid email or password');
 
       Object.keys(Customer.prototype.rawAttributes).forEach(column => {
         customer.set(column, customer.get(column) || null);
       });
 
-      res.locals.data = {
-        customer: customer.getSafeDataValues(),
-        accessToken: `Bearer ${token}`,
-        expires_in: process.env.DEFAULT_TOKEN_EXPIRY_TIME,
+      res.locals = {
+        customer_id: customer.dataValues.customer_id,
+        result: { customer: customer.getSafeDataValues() },
       };
 
       next();
@@ -124,21 +118,21 @@ password=test&email=romilkhanna@outlook.com
    * @memberof CustomerController
    *
    * Tests:
-GET http://localhost:5000/customer
+GET http://localhost/turing/api/customer
 Content-Type: application/x-www-form-urlencoded
-USER-KEY: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjoyNiwiaWF0IjoxNTYyOTAyNjE4LCJleHAiOjE1NjI5ODkwMTh9.hJ8JrmBZ31lZLUiZMhfL_eIlfZ8buIRsQOjqduxUGVs
+USER-KEY: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjozMywiaWF0IjoxNTYzMjI0OTkwLCJleHAiOjE1NjMzMTEzOTB9.VgEmZE3adTewg_6ot6ed6AM3_n6XyWqH-eVoIyFf7Mg
    */
   static async getCustomerProfile(req, res, next) {
-    const tokenHeader = req.headers['user-key'];
+    const { customer_id } = res.locals; // eslint-disable-line
 
     try {
-      if (!tokenHeader.match(/^Bearer .+/)) throw new Error('Invalid token scheme');
-
-      const token = tokenHeader.split(' ')[1];
-      const customer_id = jwt.verify(token, process.env.JWT_KEY).data; // eslint-disable-line
       const customer = await Customer.findByPk(customer_id);
 
-      res.locals.data = customer.getSafeDataValues();
+      res.locals = {
+        status: customer !== (null && undefined),
+        result: { customer: customer.getSafeDataValues() },
+      };
+
       next();
     } catch (error) {
       next(error);
@@ -156,22 +150,19 @@ USER-KEY: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjoyNiwiaWF0IjoxNT
    * @memberof CustomerController
    *
    * Tests:
-PUT http://localhost:5000/customer
+PUT http://localhost/turing/api/customer
 Content-Type: application/x-www-form-urlencoded
-USER-KEY: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjoyNiwiaWF0IjoxNTYyOTAyNjE4LCJleHAiOjE1NjI5ODkwMTh9.hJ8JrmBZ31lZLUiZMhfL_eIlfZ8buIRsQOjqduxUGVs
+USER-KEY: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjozMywiaWF0IjoxNTYzMjI0OTkwLCJleHAiOjE1NjMzMTEzOTB9.VgEmZE3adTewg_6ot6ed6AM3_n6XyWqH-eVoIyFf7Mg
 
 name=romil&email=romilkhanna@outlook.com&day_phone=1234567890
    */
   static async updateCustomerProfile(req, res, next) {
     const { name, email, password, day_phone, eve_phone, mob_phone } = req.body; // eslint-disable-line
-    const tokenHeader = req.headers['user-key'];
+    const { customer_id } = res.locals; // eslint-disable-line
 
     try {
-      if (!tokenHeader.match(/^Bearer .+/)) throw new Error('Invalid token scheme');
       if (!name || !email) throw new Error("Fields 'name' and 'email' required");
 
-      const token = tokenHeader.split(' ')[1];
-      const customer_id = jwt.verify(token, process.env.JWT_KEY).data; // eslint-disable-line
       const customer = await Customer.findByPk(customer_id);
       await customer.update({
         name,
@@ -182,7 +173,11 @@ name=romil&email=romilkhanna@outlook.com&day_phone=1234567890
         mob_phone,
       });
 
-      res.locals.data = customer.getSafeDataValues();
+      res.locals = {
+        status: customer !== (null && undefined),
+        result: customer.getSafeDataValues(),
+      };
+
       next();
     } catch (error) {
       next(error);
@@ -200,36 +195,34 @@ name=romil&email=romilkhanna@outlook.com&day_phone=1234567890
    * @memberof CustomerController
    *
    * Tests:
-PUT http://localhost:5000/customers/address
+PUT http://localhost/turing/api/customers/address
 Content-Type: application/x-www-form-urlencoded
-USER-KEY: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjoyNiwiaWF0IjoxNTYyOTAyNjE4LCJleHAiOjE1NjI5ODkwMTh9.hJ8JrmBZ31lZLUiZMhfL_eIlfZ8buIRsQOjqduxUGVs
+USER-KEY: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjozMywiaWF0IjoxNTYzMjI0OTkwLCJleHAiOjE1NjMzMTEzOTB9.VgEmZE3adTewg_6ot6ed6AM3_n6XyWqH-eVoIyFf7Mg
 
 address_1=123%20Main%20St&city=Toronto&region=ontario&postal_code=123456&country=canada&shipping_region_id=1
    */
   static async updateCustomerAddress(req, res, next) {
     const {
-      address_1,
-      address_2,
+      address_1, // eslint-disable-line
+      address_2, // eslint-disable-line
       city,
       region,
-      postal_code,
+      postal_code, // eslint-disable-line
       country,
-      shipping_region_id,
+      shipping_region_id, // eslint-disable-line
     } = req.body;
-    const tokenHeader = req.headers['user-key'];
+    const { customer_id } = res.locals; // eslint-disable-line
 
     try {
-      if (!tokenHeader.match(/^Bearer .+/)) throw new Error('Invalid token scheme');
       if (!address_1 || !city || !region || !postal_code || !country || !shipping_region_id) // eslint-disable-line
         throw new Error(
           "Fields 'address_1', 'city', 'region', 'postal_code', 'country' and 'shipping_region_id' required"
         );
 
-      const token = tokenHeader.split(' ')[1];
-      const customer_id = jwt.verify(token, process.env.JWT_KEY).data; // eslint-disable-line
       const customer = await Customer.findByPk(customer_id);
       await customer.update({
         address_1,
+        address_2: address_2 || null, // eslint-disable-line
         city,
         region,
         postal_code,
@@ -237,7 +230,11 @@ address_1=123%20Main%20St&city=Toronto&region=ontario&postal_code=123456&country
         shipping_region_id,
       });
 
-      res.locals.data = customer.getSafeDataValues();
+      res.locals = {
+        status: customer !== (null && undefined),
+        result: customer.getSafeDataValues(),
+      };
+
       next();
     } catch (error) {
       next(error);
@@ -255,26 +252,27 @@ address_1=123%20Main%20St&city=Toronto&region=ontario&postal_code=123456&country
    * @memberof CustomerController
    *
    * Tests:
-PUT http://localhost:5000/customers/creditCard
+PUT http://localhost/turing/api/customers/creditCard
 Content-Type: application/x-www-form-urlencoded
-USER-KEY: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjoyNiwiaWF0IjoxNTYyOTAyNjE4LCJleHAiOjE1NjI5ODkwMTh9.hJ8JrmBZ31lZLUiZMhfL_eIlfZ8buIRsQOjqduxUGVs
+USER-KEY: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjozMywiaWF0IjoxNTYzMjI0OTkwLCJleHAiOjE1NjMzMTEzOTB9.VgEmZE3adTewg_6ot6ed6AM3_n6XyWqH-eVoIyFf7Mg
 
 credit_card=12345678901234567890
    */
   static async updateCreditCard(req, res, next) {
     const { credit_card } = req.body; // eslint-disable-line
-    const tokenHeader = req.headers['user-key'];
+    const { customer_id } = res.locals; // eslint-disable-line
 
     try {
-      if (!tokenHeader.match(/^Bearer .+/)) throw new Error('Invalid token scheme');
       if (!credit_card) throw new Error("Fields 'credit_card' required"); // eslint-disable-line
 
-      const token = tokenHeader.split(' ')[1];
-      const customer_id = jwt.verify(token, process.env.JWT_KEY).data; // eslint-disable-line
       const customer = await Customer.findByPk(customer_id);
       await customer.update({ credit_card });
 
-      res.locals.data = customer.getSafeDataValues();
+      res.locals = {
+        status: customer !== (null && undefined),
+        result: customer.getSafeDataValues(),
+      };
+
       next();
     } catch (error) {
       next(error);
