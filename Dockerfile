@@ -1,13 +1,22 @@
-FROM node:12-alpine
+FROM node:12 as builder
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
-COPY ./package.json .
-COPY ./node_modules .
-COPY ./src ./src
-RUN npm run build
+COPY .env .
+COPY ./dist ./src
+COPY package.json .
+RUN yarn install && yarn cache clean
+
+FROM node:12-alpine
+
+ENV NODE_ENV=production
+
+RUN mkdir -p /usr/src/app
+WORKDIR /usr/src/app
+
+COPY --from=builder /usr/src/app /usr/src/app
 
 EXPOSE 5000
 
-CMD [ "npm", "run", "start" ]
+ENTRYPOINT [ "node", "src/index.js" ]

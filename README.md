@@ -2,6 +2,9 @@
 Turing ECommerce backend challenge
 
 # Kubernetes Configuration
+## Install helm (Package manager for [re]deploying API to kubernetes)
+https://github.com/helm/helm/blob/master/docs/install.md
+
 ## Install ambassador (This is the router)
 ```helm install --wait --name ambassador -f ambassador-helm-values.yaml stable/ambassador```
 
@@ -10,9 +13,6 @@ Turing ECommerce backend challenge
 
 Run the kubernetes proxy: `kubectl proxy`
 Access the dashboard: `http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:8000/proxy/`
-
-## Install helm (Package manager for [re]deploying API to kubernetes)
-https://github.com/helm/helm/blob/master/docs/install.md
 
 ## Install MySQL initialized with sql file (This will spin up the db and associated file with challenge)
 ### Windows Instructions
@@ -33,8 +33,5 @@ helm install --wait --name mysql -f mysql-helm-values.yaml stable/mysql
 ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'password';
 
 // Build and install API
-docker build -t turing-backend . && helm upgrade -i --recreate-pods --reset-values turing-backend ./Chart
-
-// Check if the API works
-curl http://localhost/turing/api/health should get a 200 with { status, time }
+./buildAndInstall.sh
 ```
