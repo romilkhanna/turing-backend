@@ -51,15 +51,10 @@ app.use('/stripe/charge', express.static(`${__dirname}/public`));
 app.use(router);
 
 app.use((req, res, next) => {
-  if (
-    res.locals.data &&
-    (res.locals.data.length || res.locals.data.count || Object.keys(res.locals.data).length)
-  ) {
-    return res.json({
-      status: true,
-      data: res.locals.data,
-    });
+  if (res.locals.status) {
+    return res.json(res.locals.result);
   }
+
   return next();
 });
 

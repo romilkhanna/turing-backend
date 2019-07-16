@@ -20,11 +20,12 @@ class AttributeController {
    * @param {*} next
    *
    * Tests:
-   *  http://localhost:5000/attributes -> 200 OK
+   *  http://localhost/turing/api/attributes -> 200 OK
    */
   static async getAllAttributes(req, res, next) {
     try {
-      res.locals.data = await Attribute.findAll();
+      const attributes = await Attribute.findAll();
+      res.locals = { status: attributes !== (null && undefined), result: attributes };
       next();
     } catch (error) {
       next(error);
@@ -38,13 +39,14 @@ class AttributeController {
    * @param {*} next
    *
    * Tests:
-   *  http://localhost:5000/attributes/1 -> 200 OK
-   *  http://localhost:5000/attributes/a -> 404 Not Found
+   *  http://localhost/turing/api/attributes/1 -> 200
+   *  http://localhost/turing/api/attributes/a -> 400
    */
   static async getSingleAttribute(req, res, next) {
     const { attribute_id } = req.params; // eslint-disable-line
     try {
-      res.locals.data = await Attribute.findByPk(attribute_id);
+      const attribute = await Attribute.findByPk(attribute_id);
+      res.locals = { status: attribute !== (null && undefined), result: attribute };
       next();
     } catch (error) {
       next(error);
@@ -58,21 +60,17 @@ class AttributeController {
    * @param {*} next
    *
    * Tests:
-   *  http://localhost:5000/attributes/values/1 -> 200 OK
-   *  http://localhost:5000/attributes/values/a -> 404 Not Found
+   *  http://localhost/turing/api/attributes/values/1 -> 200
+   *  http://localhost/turing/api/attributes/values/a -> 400
    */
   static async getAttributeValues(req, res, next) {
     const { attribute_id } = req.params; // eslint-disable-line
     try {
-      const result = await Attribute.findByPk(attribute_id, {
-        include: [
-          {
-            model: AttributeValue,
-            required: true,
-          },
-        ],
+      const result = await AttributeValue.findAll({
+        where: { attribute_id },
+        attributes: ['attribute_value_id', 'value'],
       });
-      res.locals.data = result ? result.AttributeValues : result;
+      res.locals = { status: result !== (null && undefined), result };
       next();
     } catch (error) {
       next(error);
@@ -86,13 +84,13 @@ class AttributeController {
    * @param {*} next
    *
    * Tests:
-   *  http://localhost:5000/attributes/inProduct/1 -> 200 OK
-   *  http://localhost:5000/attributes/inProduct/a -> 404 Not Found
+   *  http://localhost/turing/api/attributes/inProduct/1 -> 200
+   *  http://localhost/turing/api/attributes/inProduct/a -> 400
    */
   static async getProductAttributes(req, res, next) {
     const { product_id } = req.params; // eslint-disable-line
     try {
-      res.locals.data = await AttributeValue.findAll({
+      const productAttributes = await AttributeValue.findAll({
         attributes: [
           'attribute_value_id',
           ['value', 'attribute_value'],
@@ -113,6 +111,8 @@ class AttributeController {
           },
         ],
       });
+
+      res.locals = { status: productAttributes !== (null && undefined), result: productAttributes };
       next();
     } catch (error) {
       next(error);
