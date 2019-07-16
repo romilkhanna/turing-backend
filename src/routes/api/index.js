@@ -6,9 +6,11 @@ import shoppingCartRoute from './shoppingCart.route';
 import shippingRoute from './shipping.route';
 import taxRoute from './tax.route';
 import attributeRoute from './attribute.route';
+import healthRoute from './health.route';
 
 const routes = Router();
 
+routes.use('/', healthRoute);
 routes.use('/', welcomeRoute);
 routes.use('/', customerRoute);
 routes.use('/', productRoute);
