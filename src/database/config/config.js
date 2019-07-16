@@ -1,3 +1,5 @@
+import log from 'fancy-log';
+
 require('dotenv').config();
 
 module.exports = {
@@ -7,7 +9,7 @@ module.exports = {
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
     dialect: 'mysql',
-    logging: false,
+    logging: log,
   },
   test: {
     username: process.env.TEST_DB_USER,
@@ -18,6 +20,6 @@ module.exports = {
     logging: false,
   },
   production: {
-    use_env_variable: 'DATABASE_URL',
+    use_env_variable: 'mysql://root:password@mysql:3306/shoppers',
   },
 };
