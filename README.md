@@ -1,6 +1,3 @@
-# turing-backend
-Turing ECommerce backend challenge
-
 # Kubernetes Configuration
 ## Install helm (Package manager for [re]deploying API to kubernetes)
 https://github.com/helm/helm/blob/master/docs/install.md
